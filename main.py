@@ -11,7 +11,8 @@ from flask import Flask, g, jsonify, redirect, render_template, request, session
 
 BASE_DIR = Path(__file__).resolve().parent
 DATABASE = Path(
-	os.getenv("DATABASE_PATH", "/tmp/tienda.db" if os.getenv("VERCEL") else str(BASE_DIR / "tienda.db"))
+	os.getenv("DATABASE_PATH")
+	 or ("/tmp/tienda.db" if os.getenv("VERCEL") or os.getenv("VERCEL_ENV") else str(BASE_DIR / "tienda.db"))
 )
 
 app = Flask(__name__)
@@ -31,6 +32,7 @@ def get_db():
 		g.db = sqlite3.connect(app.config["DATABASE"])
 		g.db.row_factory = sqlite3.Row
 		g.db.execute("PRAGMA foreign_keys = ON")
+		init_db(g.db)
 	return g.db
 
 
@@ -41,8 +43,9 @@ def close_db(exception=None):
 		db.close()
 
 
-def init_db():
-	db = get_db()
+def init_db(db=None):
+	if db is None:
+		db = get_db()
 	db.executescript(
 		"""
 		CREATE TABLE IF NOT EXISTS Productos (
@@ -420,10 +423,6 @@ def register_sale():
 def list_sales():
 	sales = get_db().execute("SELECT id, fecha, total FROM Ventas ORDER BY fecha DESC").fetchall()
 	return jsonify([dict(sale) for sale in sales])
-
-
-with app.app_context():
-	init_db()
 
 
 if __name__ == "__main__":
