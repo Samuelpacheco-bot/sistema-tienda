@@ -10,7 +10,9 @@ from flask import Flask, g, jsonify, redirect, render_template, request, session
 
 
 BASE_DIR = Path(__file__).resolve().parent
-DATABASE = BASE_DIR / "tienda.db"
+DATABASE = Path(
+	os.getenv("DATABASE_PATH", "/tmp/tienda.db" if os.getenv("VERCEL") else str(BASE_DIR / "tienda.db"))
+)
 
 app = Flask(__name__)
 app.config["DATABASE"] = str(DATABASE)
