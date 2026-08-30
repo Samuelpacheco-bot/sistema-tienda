@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Casa Norte | Tienda</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="{{ url_for('static', filename='styles.css') }}" rel="stylesheet">
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg border-bottom bg-white sticky-top">
+    <div class="container py-2">
+      <a class="navbar-brand brand-mark" href="/">CASA <span>NORTE</span></a>
+      <div class="d-flex align-items-center gap-3">
+        <a class="admin-login-link" href="{{ url_for('admin_login') }}"><i class="bi bi-lock"></i><span class="d-none d-sm-inline ms-1">Admin</span></a>
+        <button class="btn cart-button position-relative" data-bs-toggle="offcanvas" data-bs-target="#cartPanel" aria-label="Abrir carrito">
+          <i class="bi bi-bag"></i><span class="ms-2 d-none d-sm-inline">Carrito</span>
+          <span id="cartCount" class="cart-count">0</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <section class="intro-section">
+      <div class="container intro-content">
+        <p class="eyebrow">BELLEZA CURADA · COMPRA CON CALMA</p>
+        <h1>Tu ritual empieza<br><em>aquí.</em></h1>
+        <p class="intro-copy">Maquillaje y skincare seleccionados para acompañar tu rutina.</p>
+        <a href="#catalogo" class="btn btn-dark rounded-0 px-4 py-3">Explorar catálogo <i class="bi bi-arrow-down ms-2"></i></a>
+      </div>
+    </section>
+
+    <section id="catalogo" class="catalog-section container py-5">
+      <div class="section-heading d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+        <div><p class="eyebrow mb-2">LA COLECCION</p><h2>Maquillaje & skincare</h2></div>
+        <span id="productSummary" class="muted-label">Cargando productos...</span>
+      </div>
+      <div id="productGrid" class="row g-4"></div>
+      <div id="emptyCatalog" class="empty-state d-none">No hay productos disponibles por ahora.</div>
+    </section>
+
+    <section id="asesoria" class="advisor-section">
+      <div class="container py-5">
+        <div class="row g-5 align-items-start">
+          <div class="col-lg-5">
+            <p class="eyebrow">ENCUENTRA TU PIEZA</p>
+            <h2>Una recomendación<br><em>a tu medida.</em></h2>
+            <p class="advisor-copy">Cuéntanos qué necesitas y nuestro asesor revisará el catálogo disponible para proponerte opciones concretas.</p>
+          </div>
+          <div class="col-lg-6 ms-auto">
+            <form id="advisorForm" class="advisor-form">
+              <label for="need" class="form-label">¿Qué estás buscando?</label>
+              <textarea id="need" name="necesidad" class="form-control" rows="3" placeholder="Ej. Una rutina para piel sensible o un look natural" required></textarea>
+              <div class="row g-3 mt-1">
+                <div class="col-md-6"><label for="budget" class="form-label">Presupuesto</label><input id="budget" name="presupuesto" class="form-control" placeholder="Ej. Hasta $100"></div>
+                <div class="col-md-6"><label for="preferences" class="form-label">Preferencias</label><input id="preferences" name="preferencias" class="form-control" placeholder="Ej. Minimalista, madera"></div>
+              </div>
+              <button class="btn btn-light rounded-0 mt-4 px-4 py-3" type="submit"><i class="bi bi-stars me-2"></i>Consultar asesor</button>
+            </form>
+            <div id="advisorResult" class="advisor-result d-none mt-4"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <span>Casa Norte</span>
+      <span>Hecho por Fioan Lian · Curso 2502</span>
+    </div>
+  </footer>
+
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="cartPanel" aria-labelledby="cartTitle">
+    <div class="offcanvas-header border-bottom"><h5 id="cartTitle" class="mb-0">Tu carrito</h5><button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button></div>
+    <div class="offcanvas-body d-flex flex-column"><div id="cartItems" class="flex-grow-1"></div><div class="cart-total border-top pt-3"><div class="d-flex justify-content-between mb-3"><span>Total</span><strong id="cartTotal">$0.00</strong></div><button id="checkoutButton" class="btn btn-dark rounded-0 w-100 py-3">Finalizar compra</button><div id="checkoutMessage" class="small mt-3"></div></div></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const cart = new Map();
+    const money = value => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'USD' }).format(value);
+    const escapeHtml = value => String(value).replace(/[&<>'"]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[character]));
+
+    async function loadProducts() {
+      const response = await fetch('/productos?estado=todos');
+      const products = await response.json();
+      const availableProducts = products.filter(product => product.stock > 0);
+      document.getElementById('productSummary').textContent = `${availableProducts.length} disponibles · ${products.length - availableProducts.length} agotados`;
+      document.getElementById('emptyCatalog').classList.toggle('d-none', products.length > 0);
+      document.getElementById('productGrid').innerHTML = products.map(product => `
+        <div class="col-sm-6 col-xl-4"><article class="product-card h-100">
+          <div class="product-image">${product.imagen_url ? `<img src="${escapeHtml(product.imagen_url)}" alt="${escapeHtml(product.nombre)}" onerror="this.onerror=null; this.style.display='none'; this.parentElement.classList.add('image-unavailable');">` : '<i class="bi bi-image"></i>'}</div>
+          <div class="p-3 d-flex flex-column"><p class="product-stock">${escapeHtml(product.categoria)}</p><h3>${escapeHtml(product.nombre)}</h3><p class="product-availability ${product.stock === 0 ? 'sold-out-label' : ''}">${product.stock === 0 ? 'PRODUCTO AGOTADO' : `${product.stock} unidades disponibles`}</p><div class="d-flex justify-content-between align-items-center mt-auto pt-3"><strong>${money(product.precio)}</strong>${product.stock > 0 ? `<button class="btn btn-outline-dark rounded-0" onclick="addToCart(${product.id}, '${escapeHtml(product.nombre).replace(/'/g, "\\'")}', ${product.precio}, ${product.stock})">Añadir <i class="bi bi-plus-lg ms-1"></i></button>` : '<span class="sold-out-badge">Agotado</span>'}</div></div>
+        </article></div>`).join('');
+    }
+
+    function addToCart(id, name, price, stock) { const item = cart.get(id) || { id, name, price, stock, quantity: 0 }; if (item.quantity < stock) item.quantity++; cart.set(id, item); renderCart(); }
+    function renderCart() {
+      const items = [...cart.values()];
+      document.getElementById('cartCount').textContent = items.reduce((sum, item) => sum + item.quantity, 0);
+      document.getElementById('cartTotal').textContent = money(items.reduce((sum, item) => sum + item.price * item.quantity, 0));
+      document.getElementById('cartItems').innerHTML = items.length ? items.map(item => `<div class="cart-item py-3"><div class="d-flex justify-content-between"><strong>${escapeHtml(item.name)}</strong><span>${money(item.price * item.quantity)}</span></div><div class="d-flex align-items-center gap-2 mt-2"><button class="quantity-button" onclick="changeQuantity(${item.id}, -1)">-</button><span>${item.quantity}</span><button class="quantity-button" onclick="changeQuantity(${item.id}, 1)">+</button><button class="remove-button ms-auto" onclick="cart.delete(${item.id}); renderCart()">Eliminar</button></div></div>`).join('') : '<p class="text-secondary">Tu carrito está vacío.</p>';
+    }
+    function changeQuantity(id, amount) { const item = cart.get(id); if (!item) return; item.quantity += amount; if (item.quantity <= 0) cart.delete(id); else if (item.quantity <= item.stock) cart.set(id, item); renderCart(); }
+
+
+    document.getElementById('checkoutButton').addEventListener('click', async () => { const items = [...cart.values()].map(item => ({ producto_id: item.id, cantidad: item.quantity })); const message = document.getElementById('checkoutMessage'); if (!items.length) { message.textContent = 'Añade un producto antes de continuar.'; return; } const response = await fetch('/ventas', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ productos: items }) }); const result = await response.json(); message.textContent = response.ok ? `Compra confirmada · ${money(result.total)}` : result.error; if (response.ok) { cart.clear(); renderCart(); loadProducts(); } });
+    document.getElementById('advisorForm').addEventListener('submit', async event => { event.preventDefault(); const resultBox = document.getElementById('advisorResult'); resultBox.classList.remove('d-none'); resultBox.textContent = 'Consultando el catálogo...'; const formData = new FormData(event.target); const response = await fetch('/api/asesoria', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(Object.fromEntries(formData)) }); const result = await response.json(); resultBox.textContent = response.ok ? result.respuesta : result.error; });
+    renderCart(); loadProducts().catch(() => { document.getElementById('productSummary').textContent = 'No se pudo cargar el catálogo'; });
+  </script>
+</body>
+</html>
